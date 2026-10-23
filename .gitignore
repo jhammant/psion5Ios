@@ -11,3 +11,4 @@ Psion5/Info.plist
 build/
 .DS_Store
 xcuserdata/
+mock-claude.log

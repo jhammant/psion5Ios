@@ -4,7 +4,7 @@ APP_SIM := $(DERIVED)/Build/Products/Debug-iphonesimulator/Psion5.app
 APP_DEV := $(DERIVED)/Build/Products/Release-iphoneos/Psion5.app
 BUNDLE_ID := io.hammant.psion5
 
-.PHONY: setup project sim device testflight clean
+.PHONY: setup project sim device testflight mock-claude clean
 
 ## Fetch the emulator files and generate the Xcode project.
 setup:
@@ -33,6 +33,10 @@ device: project
 ## Archive and upload to TestFlight (internal testers only; see scripts/testflight.sh).
 testflight:
 	./scripts/testflight.sh
+
+## Run a stand-in for the Claude API that debug builds can use (see README).
+mock-claude:
+	python3 scripts/mock-claude.py
 
 clean:
 	rm -rf $(DERIVED) Psion5.xcodeproj

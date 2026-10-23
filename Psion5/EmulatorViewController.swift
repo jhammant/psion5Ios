@@ -9,6 +9,7 @@ final class EmulatorViewController: UIViewController, WKNavigationDelegate {
     private static let startURL = URL(string: "psion://app/index.html")!
 
     private var webView: WKWebView!
+    private var claude: ClaudeController!
 
     override func loadView() {
         let webRoot = Bundle.main.resourceURL!.appendingPathComponent("Web", isDirectory: true)
@@ -16,6 +17,8 @@ final class EmulatorViewController: UIViewController, WKNavigationDelegate {
         let config = WKWebViewConfiguration()
         config.setURLSchemeHandler(BundleSchemeHandler(root: webRoot), forURLScheme: "psion")
         config.userContentController.add(LogHandler(), name: "log")
+        config.userContentController.add(MessageHandler { [weak self] body in self?.layoutMessage(body) }, name: "layout")
+        config.userContentController.add(MessageHandler { [weak self] _ in self?.claude.typingFinished() }, name: "typing")
         config.preferences.isTextInteractionEnabled = false
 
         let webView = EdgeToEdgeWebView(frame: .zero, configuration: config)
@@ -41,6 +44,20 @@ final class EmulatorViewController: UIViewController, WKNavigationDelegate {
         self.webView = webView
         view = container
         KeyboardBridge.shared.webView = webView
+        claude = ClaudeController(container: container, webView: webView)
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        claude.layoutChrome(in: view.bounds, safeArea: view.safeAreaInsets)
+    }
+
+    private func layoutMessage(_ body: Any) {
+        guard let lcd = body as? [String: Any],
+              let x = lcd["x"] as? Double, let y = lcd["y"] as? Double,
+              let width = lcd["width"] as? Double, let height = lcd["height"] as? Double,
+              let scale = lcd["scale"] as? Double else { return }
+        claude.lcdMoved(to: CGRect(x: x, y: y, width: width, height: height), scale: scale)
     }
 
     override func viewDidLoad() {
@@ -81,6 +98,20 @@ final class EmulatorViewController: UIViewController, WKNavigationDelegate {
 /// lets the page lay itself out (see sendInsets).
 private final class EdgeToEdgeWebView: WKWebView {
     override var safeAreaInsets: UIEdgeInsets { .zero }
+}
+
+/// Hands a page message to a closure. WKUserContentController keeps its
+/// handlers alive, so this lets the view controller be held weakly.
+private final class MessageHandler: NSObject, WKScriptMessageHandler {
+    private let handler: (Any) -> Void
+
+    init(_ handler: @escaping (Any) -> Void) {
+        self.handler = handler
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        handler(message.body)
+    }
 }
 
 /// Forwards the page's `nativeLog()` messages (emulator output, errors) to the unified log.

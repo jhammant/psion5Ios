@@ -13,6 +13,14 @@ final class KeyboardBridge {
 
     weak var webView: WKWebView?
 
+    /// False while the Claude app is open: keys then go to UIKit as normal,
+    /// so the Claude app's text box can take them.
+    var routesToEmulator = true
+    /// Sees every key press first; returning true swallows the key (both its
+    /// press and its release). Used for app shortcuts such as Cmd+Return.
+    var shortcutHandler: ((UIKey) -> Bool)?
+    private var swallowed: Set<UIKeyboardHIDUsage> = []
+
     /// Psion keys each held hardware key is pressing.
     private var held: [UIKeyboardHIDUsage: [DOMKey]] = [:]
     /// How many held hardware keys are pressing each Psion key, so Cmd and
@@ -20,14 +28,28 @@ final class KeyboardBridge {
     private var pressCount: [DOMKey: Int] = [:]
 
     /// Returns true when the event was a keyboard event and has been handled.
+    /// False means UIKit should deliver it as usual.
     func handle(_ event: UIPressesEvent) -> Bool {
         guard let webView else { return false }
 
         var script = ""
         var sawKey = false
+        var forUIKit = false
         for press in event.allPresses {
             guard let key = press.key else { continue }
             sawKey = true
+            if press.phase == .began, shortcutHandler?(key) == true {
+                swallowed.insert(key.keyCode)
+                continue
+            }
+            if swallowed.contains(key.keyCode) {
+                if press.phase == .ended || press.phase == .cancelled { swallowed.remove(key.keyCode) }
+                continue
+            }
+            guard routesToEmulator else {
+                forUIKit = true
+                continue
+            }
             switch press.phase {
             case .began:
                 guard held[key.keyCode] == nil, let keys = KeyMap.psionKeys(for: key.keyCode) else { continue }
@@ -44,7 +66,7 @@ final class KeyboardBridge {
         if !script.isEmpty {
             webView.evaluateJavaScript(script)
         }
-        return sawKey
+        return sawKey && !forUIKit
     }
 
     /// Lifts every key, e.g. when the app loses focus mid-press.

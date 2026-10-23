@@ -60,3 +60,6 @@ targets:
               - UISceneConfigurationName: Default
                 UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
         ITSAppUsesNonExemptEncryption: false
+        # Lets debug builds talk to scripts/mock-claude.py on localhost.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true

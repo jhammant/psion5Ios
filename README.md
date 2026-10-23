@@ -22,6 +22,46 @@ It works on both of the Duo's screens and when you fold or unfold, and on any ot
 - Works offline. The emulator is bundled into the app, not loaded from the web each time.
 - Edge swipes need a second swipe, so tapping the silkscreen icons near the edge won't throw
   you out of the app.
+- A Claude app, drawn on the Psion's screen in the Psion's own style, that can type its answers
+  into Word, Jotter or any other Psion app (below).
+
+## Claude on the Psion
+
+Tap **Claude** in the top corner, or press **Cmd+Return**, and a Claude app opens over the Psion's
+LCD. Ask it anything with the folding keyboard; the answer streams in, and **Ctrl+T** types it into
+whichever Psion app you were using, key by key, as if you'd typed it yourself.
+
+![The Claude app on the Psion's screen](docs/claude-on-psion.png)
+
+![Claude's answer typed into Psion Jotter](docs/claude-typed-into-jotter.png)
+
+*(Screenshots from the iPhone Duo simulator against the test server in `scripts/mock-claude.py`.)*
+
+| Key | In the Claude app |
+| --- | --- |
+| Cmd+Return | Open or close Claude |
+| Enter | Send |
+| Ctrl+T | Type the last answer into the Psion app underneath |
+| Ctrl+N | New chat |
+| Ctrl+K | Change API key |
+| Up / Down | Scroll the conversation |
+| Esc | Back to the Psion (also stops typing an answer) |
+
+The first time, it asks for an Anthropic API key (create one at
+[console.anthropic.com](https://console.anthropic.com)). The key is stored in the iPhone's Keychain,
+on that device only, and is only ever sent to `api.anthropic.com`. Questions and answers go to
+Anthropic's API, and you pay Anthropic for them at the usual API rates.
+
+It uses Claude Opus 5.5 at low effort, which keeps chat answers quick, and asks Claude to answer in
+short plain text the Psion can show and type. If Claude's safety checks decline a question, the API
+retries it on Anthropic's recommended fallback model before giving up.
+
+Typing runs at about 8 to 25 characters a second (capitals and symbols are slower), because the
+emulated Psion needs each key held for a moment. Characters the Psion keyboard can't make are swapped for the nearest one it can
+(curly quotes become straight, dashes become hyphens, é becomes e) or skipped.
+
+Without a hardware keyboard, the iPhone's on-screen keyboard works too; the Claude screen moves up
+above it.
 
 ## Build and install
 
@@ -67,8 +107,20 @@ Psion shortcuts are mostly Ctrl + letter (Ctrl+N new file, Ctrl+E close and so o
 collide with iOS. iOS still keeps a few system shortcuts for itself, such as Cmd+Space, Cmd+Tab and
 Cmd+H.
 
-Keys with no Psion equivalent (`- = [ ] \ ; /` and the function keys) do nothing yet. On a real
-5mx those symbols come from key combinations, so for now type them the way the Psion keyboard does.
+Keys with no Psion equivalent (`- = [ ] \ ; /` and the function keys) do nothing yet. On the Psion
+those symbols come from key combinations, worked out by trying every one in Jotter:
+
+| Psion keys | Characters |
+| --- | --- |
+| Shift + 1 2 3 4 5 6 7 8 9 0 | `! " £ $ % ^ & * ( )` |
+| Shift + `'` `,` `.` | `~ / ?` |
+| Psion + 1 2 3 4 5 6 7 8 9 0 | `_ # \ @ < > [ ] { }` |
+| Psion + `'` | `:` |
+| Psion + L, O, P, I | `; - = +` |
+| Psion + E, U, Y | `€ ÷ ×` |
+| Psion + B, C, V, X, Z | accents ``^ ´ ~ ` ¨`` (press the letter after) |
+
+Psion is Cmd on your keyboard. Psion + `,` opens Help.
 
 The touch screen works as the Psion's: tap the silkscreen icons (System, Word, Calc...) and the
 on-screen buttons.
@@ -79,6 +131,7 @@ on-screen buttons.
   starts, and anything on its C: drive goes when iOS kills the app. It keeps running while the app
   is in memory, including across fold and unfold.
 - No sound, serial or infrared, the same as WindEmu itself.
+- Claude conversations aren't saved either; they last until the app is closed.
 
 ## How it works
 
@@ -93,6 +146,14 @@ flowchart LR
   sdl --> emu["WindEmu wasm + 5mx ROM"]
   scheme["BundleSchemeHandler (psion://app/)"] -. "serves" .-> emu
 ```
+
+The Claude app (`Psion5/Claude`) is native UIKit laid over the LCD rectangle the page reports. It
+calls the Messages API with `URLSession` (there's no official Anthropic SDK for Swift), streams the
+reply, and keeps each reply's content blocks exactly as they arrived for the next turn. Typing an
+answer into the Psion goes through `psion.typeText()` in `bridge.js`, which turns each character
+into the Psion key presses from the table above. `make mock-claude` runs `scripts/mock-claude.py`,
+a stand-in for the API that checks every request; launch a debug build with
+`CLAUDE_API_URL=http://localhost:8787/v1/messages` to use it.
 
 `Psion5/Web` holds a small page (`index.html`, `bridge.js`) around WindEmu's Emscripten build.
 A `WKURLSchemeHandler` serves it at `psion://app/`, because WKWebView can't `fetch()` the `.wasm`
