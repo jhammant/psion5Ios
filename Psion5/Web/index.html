@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Psion 5mx</title>
+<style>
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; background: #000;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  #stage { position: fixed; inset: 0; }
+  /* WindEmu's digitiser is 695x280 (the 640x240 LCD plus the silkscreen
+     icons); cover.svg draws the icons and runs 25px below it. bridge.js
+     positions and scales it. */
+  #device {
+    position: absolute; left: 50%; top: 50%;
+    width: 695px; height: 305px;
+    transform: translate(-50%, -50%);
+  }
+  #canvas {
+    display: block; width: 695px; height: 280px; background: #000;
+    image-rendering: pixelated;
+  }
+  #cover { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #status {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #8a8; font: 15px -apple-system, system-ui, sans-serif; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="device">
+    <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+    <img id="cover" src="cover.svg" alt="">
+  </div>
+  <div id="status">Loading…</div>
+</div>
+<script src="bridge.js"></script>
+<script async src="WindEmu.js"></script>
+</body>
+</html>

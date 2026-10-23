@@ -1,0 +1,13 @@
+# Fetched by scripts/fetch-windemu.sh; contains Psion's ROM, never commit
+Psion5/Web/WindEmu.js
+Psion5/Web/WindEmu.wasm
+Psion5/Web/WindEmu.data
+Psion5/Web/cover.svg
+*.part
+
+# Generated
+Psion5.xcodeproj/
+Psion5/Info.plist
+build/
+.DS_Store
+xcuserdata/
