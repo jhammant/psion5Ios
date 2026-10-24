@@ -1,14 +1,14 @@
 import UIKit
 import WebKit
 
-/// Runs the Claude app: the on-screen button, the Claude screen over the
-/// Psion's LCD, its keyboard shortcuts, and typing answers into the Psion.
+/// Runs the Claude app: the Claude screen over the Psion's LCD (opened from
+/// Claude's icon on the silkscreen), its keyboard shortcuts, and typing
+/// answers into the Psion.
 @MainActor
 final class ClaudeController {
     private let webView: WKWebView
     private let chat = ClaudeChat()
     private let appView = ClaudeAppView()
-    private let button = UIButton(type: .custom)
     private let typingLabel = UILabel()
 
     private(set) var isOpen = false
@@ -26,18 +26,13 @@ final class ClaudeController {
         appView.onTypeIntoPsion = { [weak self] in self?.typeIntoPsion() }
         appView.onNewChat = { [weak self] in self?.newChat() }
         appView.onChangeKey = { [weak self] in self?.changeKey() }
+        // Without a hardware keyboard, the on-screen one covers the
+        // silkscreen icons; tapping the transcript puts it away. With a
+        // hardware keyboard the input box keeps focus, so typing still works.
+        appView.onTranscriptTapped = { [weak self] in
+            if self?.keyboardTop.isFinite == true { self?.appView.unfocus() }
+        }
         container.addSubview(appView)
-
-        button.setTitle("Claude", for: .normal)
-        button.setTitleColor(ClaudeAppView.ink, for: .normal)
-        button.titleLabel?.font = ClaudeAppView.font(14, bold: true)
-        button.backgroundColor = ClaudeAppView.lcd
-        button.layer.borderColor = ClaudeAppView.ink.cgColor
-        button.layer.borderWidth = 1.5
-        button.layer.cornerRadius = 4
-        button.accessibilityHint = "Opens Claude. Shortcut: Command Return."
-        button.addTarget(self, action: #selector(toggle), for: .touchUpInside)
-        container.addSubview(button)
 
         typingLabel.text = "Typing... Esc stops"
         typingLabel.textAlignment = .center
@@ -90,19 +85,28 @@ final class ClaudeController {
         appView.frame = frame
     }
 
-    /// Puts the button in the top-right corner, in the black margin above the Psion.
+    /// Puts the typing notice in the top-right corner, in the black margin above the Psion.
     func layoutChrome(in bounds: CGRect, safeArea: UIEdgeInsets) {
-        let size = CGSize(width: 78, height: 26)
-        let origin = CGPoint(x: bounds.maxX - safeArea.right - size.width - 10, y: safeArea.top + 6)
-        button.frame = CGRect(origin: origin, size: size)
-        let typingWidth: CGFloat = 170
-        typingLabel.frame = CGRect(x: button.frame.maxX - typingWidth, y: origin.y, width: typingWidth, height: size.height)
+        let size = CGSize(width: 170, height: 26)
+        typingLabel.frame = CGRect(origin: CGPoint(x: bounds.maxX - safeArea.right - size.width - 10, y: safeArea.top + 6), size: size)
     }
 
     // MARK: - Open and close
 
-    @objc func toggle() {
+    func toggle() {
         isOpen ? close() : open()
+    }
+
+    /// The page reports taps on Claude's silkscreen icon ("toggle") and any
+    /// touch that reaches the Psion ("psionTouched"). While Claude is open
+    /// the only part of the Psion left uncovered is the silkscreen, so a
+    /// touch there means another app's icon: switch back to the Psion.
+    func silkscreenTapped(_ message: String?) {
+        switch message {
+        case "toggle": toggle()
+        case "psionTouched": close()
+        default: break
+        }
     }
 
     func open() {
@@ -197,7 +201,6 @@ final class ClaudeController {
         }
         close()
         isTyping = true
-        button.isHidden = true
         typingLabel.isHidden = false
         webView.callAsyncJavaScript("return psion.typeText(text)", arguments: ["text": answer], in: nil, in: .page) { [weak self] result in
             if case .success(let typed) = result, (typed as? Int ?? 0) > 0 { return }
@@ -214,7 +217,6 @@ final class ClaudeController {
     func typingFinished() {
         isTyping = false
         typingLabel.isHidden = true
-        button.isHidden = false
     }
 
     // MARK: - Shortcuts

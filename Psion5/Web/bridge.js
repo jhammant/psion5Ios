@@ -42,6 +42,62 @@
   window.addEventListener("resize", fit);
   fit();
 
+  // Claude takes Email's place on the silkscreen: the emulator has no modem,
+  // so Email can't do anything. The slot is in cover.svg's units (its
+  // 2896-wide viewBox spans the 695px device).
+  const CLAUDE_SLOT = { left: 1562.5, right: 1895.83, top: 1000 };
+  const CLAUDE_ICON = `<g transform="rotate(-6 1745 1100)">
+    <defs>
+      <pattern id="claude-dots" width="13" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+        <circle cx="4" cy="4" r="2.4"/></pattern>
+      <path id="claude-bubble" d="M1652,1052 q0,-24 24,-24 h142 q24,0 24,24 v76 q0,24 -24,24 h-108 l-46,34 l12,-34 q-24,0 -24,-24 z"/>
+    </defs>
+    <use href="#claude-bubble" transform="translate(12,10)"/>
+    <use href="#claude-bubble" fill="#ebebeb" stroke="#000" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M1662,1132 q4,12 16,14 h138 q16,0 18,-16 z" fill="url(#claude-dots)"/>
+    <g transform="translate(1702,1084)" stroke="#000" stroke-linecap="round">
+      <path d="M0,-32 V32 M-32,0 H32" stroke-width="10"/>
+      <path d="M-20,-20 L20,20 M-20,20 L20,-20" stroke-width="8"/>
+    </g>
+    <path d="M1752,1066 h62 M1752,1086 h62 M1752,1106 h40" stroke="#000" stroke-width="7" stroke-linecap="round"/>
+  </g>`;
+
+  // Swaps Email's picture and label in cover.svg for Claude's. If the
+  // artwork isn't laid out as expected, the original is shown unchanged.
+  async function drawSilkscreen() {
+    const cover = document.getElementById("cover");
+    try {
+      const svg = new DOMParser().parseFromString(await (await fetch("cover.svg")).text(), "image/svg+xml");
+      const label = [...svg.querySelectorAll("text")].find((t) => t.textContent.trim() === "Email");
+      const picture = [...svg.querySelectorAll("use")].find((use) => {
+        const m = /matrix\(([^)]*)\)/.exec(use.getAttribute("transform") || "");
+        const [a, b, c, d, e, f] = m ? m[1].split(/[\s,]+/).map(Number) : [1, 0, 0, 1, 0, 0];
+        const x = parseFloat(use.getAttribute("x")) || 0, y = parseFloat(use.getAttribute("y")) || 0;
+        const left = a * x + c * y + e, top = b * x + d * y + f;
+        return left > CLAUDE_SLOT.left && left < CLAUDE_SLOT.right && top > CLAUDE_SLOT.top;
+      });
+      if (!label || !picture) throw new Error("Email icon not found");
+
+      const icon = new DOMParser().parseFromString(
+        `<svg xmlns="http://www.w3.org/2000/svg">${CLAUDE_ICON}</svg>`, "image/svg+xml").documentElement.firstElementChild;
+      picture.replaceWith(svg.importNode(icon, true));
+      label.textContent = "Claude";
+      label.setAttribute("x", `${(CLAUDE_SLOT.left + CLAUDE_SLOT.right) / 2}px`);
+      label.setAttribute("text-anchor", "middle");
+      const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
+      cover.src = URL.createObjectURL(blob);
+    } catch (e) {
+      nativeLog("silkscreen left as it was: " + e.message);
+      cover.src = "cover.svg";
+    }
+  }
+  drawSilkscreen();
+
+  document.getElementById("claude-icon").addEventListener("click", () => post("claude", "toggle"));
+  // Touching the Psion while Claude is open (only the silkscreen is still
+  // uncovered) closes Claude, as tapping another app's icon would.
+  document.getElementById("canvas").addEventListener("pointerdown", () => post("claude", "psionTouched"), true);
+
   // The app intercepts hardware keys natively and replays them here, so it
   // can remap keys the Psion lacks. If WebKit ever delivers its own copy of a
   // key as well, drop it so nothing is typed twice.

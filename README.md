@@ -27,9 +27,11 @@ It works on both of the Duo's screens and when you fold or unfold, and on any ot
 
 ## Claude on the Psion
 
-Tap **Claude** in the top corner, or press **Cmd+Return**, and a Claude app opens over the Psion's
-LCD. Ask it anything with the folding keyboard; the answer streams in, and **Ctrl+T** types it into
-whichever Psion app you were using, key by key, as if you'd typed it yourself.
+Claude has its own icon on the Psion's silkscreen, in Email's place (Email can't do anything
+without a modem). Tap it, or press **Cmd+Return**, and a Claude app opens over the Psion's LCD.
+Ask it anything with the folding keyboard; the answer streams in, and **Ctrl+T** types it into
+whichever Psion app you were using, key by key, as if you'd typed it yourself. Tap Claude's icon
+again, or any other app's, to go back to the Psion.
 
 ![The Claude app on the Psion's screen](docs/claude-on-psion.png)
 
@@ -61,7 +63,7 @@ emulated Psion needs each key held for a moment. Characters the Psion keyboard c
 (curly quotes become straight, dashes become hyphens, é becomes e) or skipped.
 
 Without a hardware keyboard, the iPhone's on-screen keyboard works too; the Claude screen moves up
-above it.
+above it. Tap the conversation to put the keyboard away and uncover the silkscreen icons.
 
 ## Build and install
 
@@ -123,7 +125,7 @@ those symbols come from key combinations, worked out by trying every one in Jott
 Psion is Cmd on your keyboard. Psion + `,` opens Help.
 
 The touch screen works as the Psion's: tap the silkscreen icons (System, Word, Calc...) and the
-on-screen buttons.
+on-screen buttons. The one exception is Claude's icon, which the app draws over Email's.
 
 ## Limitations
 
@@ -147,7 +149,9 @@ flowchart LR
   scheme["BundleSchemeHandler (psion://app/)"] -. "serves" .-> emu
 ```
 
-The Claude app (`Psion5/Claude`) is native UIKit laid over the LCD rectangle the page reports. It
+The Claude app (`Psion5/Claude`) is native UIKit laid over the LCD rectangle the page reports.
+`bridge.js` redraws Email's icon in WindEmu's `cover.svg` as Claude's when the page loads, and puts
+a tap target over it, so the Psion never sees taps there. It
 calls the Messages API with `URLSession` (there's no official Anthropic SDK for Swift), streams the
 reply, and keeps each reply's content blocks exactly as they arrived for the next turn. Typing an
 answer into the Psion goes through `psion.typeText()` in `bridge.js`, which turns each character

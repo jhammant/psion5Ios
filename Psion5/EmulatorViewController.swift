@@ -19,6 +19,7 @@ final class EmulatorViewController: UIViewController, WKNavigationDelegate {
         config.userContentController.add(LogHandler(), name: "log")
         config.userContentController.add(MessageHandler { [weak self] body in self?.layoutMessage(body) }, name: "layout")
         config.userContentController.add(MessageHandler { [weak self] _ in self?.claude.typingFinished() }, name: "typing")
+        config.userContentController.add(MessageHandler { [weak self] body in self?.claude.silkscreenTapped(body as? String) }, name: "claude")
         config.preferences.isTextInteractionEnabled = false
 
         let webView = EdgeToEdgeWebView(frame: .zero, configuration: config)

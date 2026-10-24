@@ -13,6 +13,7 @@ final class ClaudeAppView: UIView, UITextFieldDelegate {
     var onTypeIntoPsion: (() -> Void)?
     var onNewChat: (() -> Void)?
     var onChangeKey: (() -> Void)?
+    var onTranscriptTapped: (() -> Void)?
 
     private(set) var mode: Mode = .chat
     var scale: CGFloat = 1 { didSet { if scale != oldValue { restyle() } } }
@@ -56,6 +57,7 @@ final class ClaudeAppView: UIView, UITextFieldDelegate {
         transcript.textContainer.lineFragmentPadding = 0
         transcript.showsVerticalScrollIndicator = true
         transcript.indicatorStyle = .black
+        transcript.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(transcriptTapped)))
         pane.addSubview(transcript)
 
         askLabel.text = "Ask:"
@@ -297,4 +299,5 @@ final class ClaudeAppView: UIView, UITextFieldDelegate {
     @objc private func typeTapped() { onTypeIntoPsion?() }
     @objc private func newChatTapped() { onNewChat?() }
     @objc private func keyTapped() { onChangeKey?() }
+    @objc private func transcriptTapped() { onTranscriptTapped?() }
 }
