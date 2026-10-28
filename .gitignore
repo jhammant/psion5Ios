@@ -12,3 +12,6 @@ build/
 .DS_Store
 xcuserdata/
 mock-claude.log
+
+# Claude session transcripts, exported locally by forkcode; never commit to this public repo
+.sessions/
